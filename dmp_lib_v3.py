@@ -1,5 +1,4 @@
-#%matplotlib PyQt5
-import urx
+#import urx
 
 import openpyxl
 from pathlib import Path
@@ -201,7 +200,7 @@ def get_trajectory_point(file_name, p0, threshold=0.01):
 
 	T = []
 	for i in range(0, len(dmp_x)-1):
-		point = (dmp_x[i], dmp_y[i], dmp_z[i], orientation_fixed(0), orientation_fixed(1), orientation_fixed(2))
+		point = (dmp_x[i], dmp_y[i], dmp_z[i], orientation_fixed[0], orientation_fixed[1], orientation_fixed[2])
 		T.append(point)
 
 	return T
