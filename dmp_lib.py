@@ -95,9 +95,9 @@ class dmp():
         dT = 0
         T = T0
 
-        deltaT = 1/P
+        deltaT = 1/P*2
 
-        for i in range(0, P):
+        for i in range(0, P*2):
             ddT = (self.alpha * (self.beta * (g - T) - dT)) + self.fd(self.x(i*deltaT), T0, g)
             dT = dT + self.tau * ddT
             T = T + self.tau * dT
