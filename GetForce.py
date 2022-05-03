@@ -3,16 +3,13 @@ from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import time
 import sys
 
-#rtde_c = rtde_control.RTDEControlInterface("192.168.1.100")
-#rtde_c.moveL([0.097, -0.380, 0.544, 0.020, -3.172, 0.021], 0.5, 0.3)
 rtde_r = rtde_receive.RTDEReceiveInterface("192.168.1.100")
-#actual_q = rtde_r.getActualQ()
-#print(actual_q)
+
 
 frequency = 125
 dt = 1/frequency
 rtde_r = RTDEReceive("192.168.1.100", frequency)
-rtde_r.startFileRecording("t01.csv", ["actual_TCP_pose"])
+rtde_r.startFileRecording("ForceData.csv", ["actual_TCP_force"])
 print("Data recording started, press [Ctrl-C] to end recording.")
 
 i = 0
