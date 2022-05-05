@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import time
 import numpy as np
 import csv
+import copy
 
 from Lowpass_filter import lowpassfilter
 
@@ -9,9 +10,10 @@ import rtde_control
 import rtde_receive
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
-def Admittance_con(bias1, bias2, bias3):
+def Admittance_cali():
     rtde_r = rtde_receive.RTDEReceiveInterface("192.168.1.100")
     curr_pos = rtde_r.getActualTCPPose()
+    start_force = copy.deepcopy(rtde_r.getActualTCPForce())
     csv_file = open('ForceData_drift.csv', 'w')
 
     csv_writer = csv.writer(csv_file, delimiter=",")
@@ -25,7 +27,6 @@ def Admittance_con(bias1, bias2, bias3):
     lookahead_time = 0.1
     gain = 100
 
-
     # Control matrices
 
     Kp = np.matrix([[5, 0, 0], [0, 5, 0], [0, 0, 5]])
@@ -37,7 +38,6 @@ def Admittance_con(bias1, bias2, bias3):
     Mp_inv = np.matrix([[10, 0, 0], [0, 10, 0], [0, 0, 10]])
     '''
 
-
     # Environment force
     f = np.array([[0], [0], [0]])
     cut_off = 5
@@ -45,22 +45,19 @@ def Admittance_con(bias1, bias2, bias3):
     filter_y = lowpassfilter(cut_off, 0.125)
     filter_z = lowpassfilter(cut_off, 0.125)
 
-
-    #States
-    #(0.097, -0.380, 0.544, 0.020, -3.172, 0.021)
+    # States
+    # (0.097, -0.380, 0.544, 0.020, -3.172, 0.021)
 
     print(curr_pos[0])
     print(curr_pos[1])
     print(curr_pos[2])
 
-
-    #pd = np.array([[0.097], [-0.380], [0.544]])
+    # pd = np.array([[0.097], [-0.380], [0.544]])
     pd = np.array([[curr_pos[0]], [curr_pos[1]], [curr_pos[2]]])
     pc0 = np.array([[curr_pos[0]], [curr_pos[1]], [curr_pos[2]]])
-    pcd = pc0 - pd #np.array([[-0.3], [0], [0.8]])
+    pcd = pc0 - pd  # np.array([[-0.3], [0], [0.8]])
 
     dpcd = np.array([[0], [0], [0]])
-
 
     # time contraint
     tau = 0.01
@@ -74,14 +71,25 @@ def Admittance_con(bias1, bias2, bias3):
 
     f_offset = 20
 
-    data1 = np.array([])
-    data2 = np.array([])
-    data3 = np.array([])
-    data4 = np.array([])
-    data5 = np.array([])
-    data6 = np.array([])
+    start_time = time.time()
+    bias = [0,0,0]
+
     try:
-        while True:
+        while time.time() - start_time < 2:
+
+            newForce = rtde_r.getActualTCPForce()
+            if start_force != newForce:
+                if start_force[0] != newForce[0]:
+                    bias[0] = newForce[0] - start_force[0]
+                    print("Changed: " + str(newForce[0] - start_force[0]))
+                if start_force[1] != newForce[1]:
+                    bias[1] = newForce[1] - start_force[1]
+                    print("Changed: " + str(newForce[1] - start_force[1]))
+                if start_force[2] != newForce[2]:
+                    print("Changed: " + str(newForce[2] - start_force[2]))
+                    bias[2] = newForce[2] - start_force[2]
+                print(bias)
+
             #curr_pos_new = rtde_r.getActualTCPPose()
             #pd = np.array([[curr_pos_new[0]], [curr_pos_new[1]], [curr_pos_new[2]]])
             F = rtde_r.getActualTCPForce()
@@ -89,9 +97,9 @@ def Admittance_con(bias1, bias2, bias3):
             #print(f"Fx: {F[0]}")
             #print(f"Fy: {F[1]}")
             #print(f"Fz: {F[2]}")
-            Fx = filter_x.lowpass_filter(F[0] + bias1)
-            Fy = filter_y.lowpass_filter(F[1] + bias2)
-            Fz = filter_z.lowpass_filter(F[2] + bias3)
+            Fx = filter_x.lowpass_filter(F[0])
+            Fy = filter_y.lowpass_filter(F[1])
+            Fz = filter_z.lowpass_filter(F[2])
             #print(F)
             #print(str(F[0]/15) + " | " + str(F[1]/15) + " | " +str(F[2]/15))
             f = np.array([[Fx/20], [Fy/20], [Fz/20]])
@@ -121,17 +129,8 @@ def Admittance_con(bias1, bias2, bias3):
     except KeyboardInterrupt:
         rtde_c.stopScript()
         csv_file.close()
-        np.save("data1.npy", data1)
-        np.save("data2.npy", data2)
-        np.save("data3.npy", data3)
-        np.save("data4.npy", data4)
-        np.save("data5.npy", data5)
-        np.save("data6.npy", data6)
         print("Interrupted")
     rtde_c.stopScript()
     csv_file.close()
 
-    plt.plot(posx, "red")
-    plt.plot(posy, "green")
-    plt.plot(posz, "blue")
-    plt.show()
+    return bias

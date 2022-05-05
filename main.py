@@ -3,7 +3,9 @@ from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import time
 import multiprocessing
 import sys
+
 from Admittance import Admittance_con
+from Admitance_calibration import *
 
 rtde_r = rtde_receive.RTDEReceiveInterface("192.168.1.100")
 
@@ -37,7 +39,12 @@ def recording():
 
 
 if __name__ == "__main__":
-    p1 = multiprocessing.Process(name='p1', target=Admittance_con)
+
+    bias = Admittance_cali()
+    print("I got run")
+    print(f"Bias: {bias}")
+
+    p1 = multiprocessing.Process(name='p1', target=Admittance_con, args=(bias[0],bias[1],bias[2]))
     p = multiprocessing.Process(name='p', target=recording)
     p1.start()
     p.start()
