@@ -103,22 +103,10 @@ class dmp():
             T = T + self.tau * dT
             Trajectory.append(T)
 
-
         return Trajectory
-
-
-
-
 
     def train_dmp(self, T):
         #self.Ci, self.hi = calc_gaus()
         #self.ft = calc_ft()
         #self.wi = calc_w(Ci, hi, ft)
         return 0
-
-
-
-
-
-
-

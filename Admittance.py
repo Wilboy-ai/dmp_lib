@@ -1,18 +1,25 @@
 import matplotlib.pyplot as plt
 import time
 import numpy as np
-
 from Lowpass_filter import lowpassfilter
+
+import dmp_lib as dmp
+import plot_lib as pl
 
 import rtde_control
 import rtde_receive
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
-def Admittance_con():
-    rtde_r = rtde_receive.RTDEReceiveInterface("192.168.1.100")
-    curr_pos = rtde_r.getActualTCPPose()
+rtde_r = rtde_receive.RTDEReceiveInterface("192.168.1.100")
+rtde_c = rtde_control.RTDEControlInterface("192.168.1.100")
 
-    rtde_c = rtde_control.RTDEControlInterface("192.168.1.100")
+def Admittance_con(x, y, z):
+
+    x.reverse()
+    y.reverse()
+    z.reverse()
+
+    curr_pos = rtde_r.getActualTCPPose()
 
     velocity = 0.7
     acceleration = 0.7
@@ -25,9 +32,9 @@ def Admittance_con():
 
     # Control matrices
 
-    Kp = np.matrix([[0, 0, 0], [0, 0, 0], [0, 0, 0]]) #stiffness
-    Dp = np.matrix([[5, 0, 0], [0, 5, 0], [0, 0, 5]]) #damping
-    Mp_inv = np.matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]]) #mass in kg
+    Kp = np.matrix([[3, 0, 0], [0, 3, 0], [0, 0, 3]])
+    Dp = np.matrix([[3, 0, 0], [0, 3, 0], [0, 0, 3]])
+    Mp_inv = np.matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     '''
     Kp = np.matrix([[10, 0, 0], [0, 10, 0], [0, 0, 10]])
     Dp = np.matrix([[10, 0, 0], [0, 10, 0], [0, 0, 10]])
@@ -52,7 +59,7 @@ def Admittance_con():
 
 
     #pd = np.array([[0.097], [-0.380], [0.544]])
-    pd = np.array([[curr_pos[0]], [curr_pos[1]], [curr_pos[2]]])
+    pd = np.array([[x[0]], [y[0]], [z[0]]])
     pc0 = np.array([[curr_pos[0]], [curr_pos[1]], [curr_pos[2]]])
     pcd = pc0 - pd #np.array([[-0.3], [0], [0.8]])
 
@@ -72,13 +79,9 @@ def Admittance_con():
     f_offset = 20
     try:
         while True:
-
             F = rtde_r.getActualTCPForce()
 
-            #print(F)
-            #print(str(F[0]/15) + " | " + str(F[1]/15) + " | " +str(F[2]/15))
-
-            #threshold
+            # threshold
             thres_value = 6.0
             fx = 0
             fy = 0
@@ -89,14 +92,13 @@ def Admittance_con():
             F[2] = filter_z.lowpass_filter(F[2])
 
             if F[0] < -thres_value or F[0] > thres_value:
-                fx = F[0]/20
+                fx = F[0] / 20
             if F[1] < -thres_value or F[1] > thres_value:
-                fy = F[1]/20
+                fy = F[1] / 20
             if F[2] < -thres_value or F[2] > thres_value:
-                fz = F[2]/20
+                fz = F[2] / 20
 
             f = np.array([[fx], [fy], [fz]])
-            print(f)
 
             ddpcd = np.dot(Mp_inv, (f - np.dot(Dp, dpcd) - np.dot(Kp, pcd)))
             dpcd = dpcd + tau*ddpcd
@@ -110,19 +112,25 @@ def Admittance_con():
             posy.append(pc[1, 0])
             posz.append(pc[2, 0])
 
-           # if pc[0, 0] == pd[0, 0] and pc[1, 0] == pd[1, 0] and pc[2, 0] == pd[2, 0]:
-           #     break
-            if t >= 10000:
+            if abs(abs(pd[0,0]) - abs(pc[0,0])) < 0.001 and abs(abs(pd[1,0]) - abs(pc[1,0])) < 0.001 and abs(abs(pd[2,0]) - abs(pc[2,0])) < 0.001 and t >= len(x) - 1:
+                print(f"current point: {rtde_r.getActualTCPPose()[0:3]}")
+                print(f"desired point: {pd}")
+                print(
+                    f"Error: {abs(pd[0, 0]) - abs(pc[0, 0])}, {abs(pd[1, 0]) - abs(pc[1, 0])}, {abs(pd[2, 0]) - abs(pc[2, 0])}")
                 break
+            if t >= len(x) - 1:
+                print(f"current point: {rtde_r.getActualTCPPose()[0:3]}")
+                print(f"desired point: {pd}")
+                t = t-1
+            if not (abs(abs(pd[0, 0]) - abs(pc[0, 0])) < 0.01 and abs(abs(pd[1, 0]) - abs(pc[1, 0])) < 0.01 and abs(abs(pd[2, 0]) - abs(pc[2, 0])) < 0.01):
+                print("Admittance has been activated!")
+                t = t-1
             t = t + 1
 
-            #curr_pos_new = rtde_r.getActualTCPPose()
-            #pd = np.array([[curr_pos_new[0]], [curr_pos_new[1]], [curr_pos_new[2]]])
-
+            pd = np.array([[x[t]], [y[t]], [z[t]]])
 
     except KeyboardInterrupt:
         rtde_c.stopScript()
-       # csv_file.close()
         print("Interrupted")
     rtde_c.stopScript()
 
@@ -130,3 +138,58 @@ def Admittance_con():
     plt.plot(posy, "green")
     plt.plot(posz, "blue")
     plt.show()
+
+
+def main():
+    x, y, z = pl.read_T("AdmittanceRecording2.xlsx", 0.001)
+    # pl.plot_T(x, y, z, 'Demonstration Trajectory')
+    target_pos = rtde_r.getActualTCPPose()[0:3]
+    print(target_pos)
+    N = 100
+    dmp_model_x = dmp.dmp(N)
+    dmp_model_y = dmp.dmp(N)
+    dmp_model_z = dmp.dmp(N)
+
+    fdx = dmp_model_x.calc_ft(x)
+    dmp_model_x.calc_w(x[0], x[len(x) - 1], fdx, len(x))
+
+    fdy = dmp_model_y.calc_ft(y)
+    dmp_model_y.calc_w(y[0], y[len(y) - 1], fdy, len(y))
+
+    fdz = dmp_model_z.calc_ft(z)
+    dmp_model_z.calc_w(z[0], z[len(z) - 1], fdz, len(z))
+
+    tx0 = dmp_model_x._get_T(x[len(x) - 1], x[0], len(x))
+    ty0 = dmp_model_y._get_T(y[len(y) - 1], y[0], len(y))
+    tz0 = dmp_model_z._get_T(z[len(z) - 1], z[0], len(z))
+
+    # tx = dmp_model_x._get_T(x[len(x)-1]-0.1, x[0], len(x))
+    # ty = dmp_model_y._get_T(y[len(y)-1]+0.01, y[0], len(y))
+    # tz = dmp_model_z._get_T(z[len(z)-1], z[0], len(z))
+
+    tx = dmp_model_x._get_T(target_pos[0], x[0], len(x))
+    ty = dmp_model_y._get_T(target_pos[1], y[0], len(y))
+    tz = dmp_model_z._get_T(z[len(z) - 1], z[0], len(z))
+
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.plot3D(x, y, z, 'red')
+    ax.plot3D(tx0, ty0, tz0, '--g')
+    ax.plot3D(tx, ty, tz, '--b')
+
+    ax.plot3D(0, 0, 0.130, 'xr')
+    # plot the plane
+
+    ax.legend(["Demonstration", "Original DMP", 'New position DMP'], loc="lower right")
+
+    xx, yy = np.meshgrid(np.linspace(x[len(x) - 1], x[0], 2), np.linspace(y[len(y) - 1], y[0], 2))
+    zz = 0.130 + xx * 0
+    ax.plot_surface(xx, yy, zz)
+
+    ax.set_title("DMP Trajectory")
+    plt.show()
+
+    Admittance_con(tx0, ty0, tz0)
+
+if __name__ == "__main__":
+    main()
