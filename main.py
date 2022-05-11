@@ -5,7 +5,6 @@ import multiprocessing
 import sys
 
 from Admittance import Admittance_con
-from Admitance_calibration import *
 
 rtde_r = rtde_receive.RTDEReceiveInterface("192.168.1.100")
 
@@ -15,7 +14,7 @@ def recording():
     frequency = 125
     dt = 1/frequency
     rtde_r = RTDEReceive("192.168.1.100", frequency)
-    rtde_r.startFileRecording("DeleteThis.csv", ["actual_TCP_pose"])
+    rtde_r.startFileRecording("AdmittanceRecording2.csv", ["actual_TCP_pose"])
     print("Data recording started, press [Ctrl-C] to end recording.")
 
     i = 0
@@ -40,11 +39,7 @@ def recording():
 
 if __name__ == "__main__":
 
-    bias = Admittance_cali()
-    print("I got run")
-    print(f"Bias: {bias}")
-
-    p1 = multiprocessing.Process(name='p1', target=Admittance_con, args=(bias[0],bias[1],bias[2]))
+    p1 = multiprocessing.Process(name='p1', target=Admittance_con)
     p = multiprocessing.Process(name='p', target=recording)
     p1.start()
     p.start()

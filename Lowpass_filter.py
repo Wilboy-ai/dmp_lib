@@ -11,7 +11,7 @@ class lowpassfilter:
     def __init__(self, cutt_off_frequency, delta_time):
         self.previus_output = -1
         self.delta_time = delta_time
-        self.tau = 1/(2*math.pi*cutt_off_frequency*delta_time)
+        self.tau = 1/(2*math.pi*cutt_off_frequency)
 
     def lowpass_filter(self, input):
         if self.previus_output == -1:
